@@ -27,10 +27,47 @@ invokes Write on the underlying io.WriteCloser with a newline
 terminated sequence of bytes, potentially with more than one line
 being written at a time.
 
+```Go
+func ExampleBatchLineWriter() error {
+    // Flush completed lines to os.Stdout at least every 512 bytes.
+    lf, err := gonl.NewBatchLineWriter(os.Stdout, 512)
+    if err != nil {
+        return err
+    }
+
+    // Give copy buffer some room.
+    _, rerr := io.CopyBuffer(lf, os.Stdin, make([]byte, 4096))
+
+    // Clean up
+    cerr := lf.Close()
+    if rerr == nil {
+        return cerr
+    }
+    return rerr
+}
+```
+
 ### LineTerminatedReader
 
 LineTerminatedReader reads from the source io.Reader and ensures the
 final byte read from it is a newline.
+
+```Go
+func ExampleNewLineTerminatedReader() {
+	r := &LineTerminatedReader{R: bytes.NewReader([]byte("123\n456"))}
+	buf, err := ioutil.ReadAll(r)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+		os.Exit(1)
+	}
+	if got, want := len(buf), 8; got != want {
+		fmt.Fprintf(os.Stderr, "GOT: %v; WANT: %v\n", got, want)
+		os.Exit(1)
+	}
+	fmt.Printf("%q\n", buf[len(buf)-1])
+	// Output: '\n'
+}
+```
 
 ### NewlineCounter
 
@@ -38,6 +75,16 @@ NewlineCounter counts the number of lines from the io.Reader until it
 receives a read error, such as io.EOF, and returns the number of lines
 read. It will return the same number regardless of whether the final
 Read terminated in a newline character or not.
+
+```Go
+c, err := gonl.NewlineCounter(strings.NewReader("one\ntwo\nthree\n"))
+if err != nil {
+    t.Fatal(err)
+}
+if got, want := c, 3; got != want {
+	t.Errorf("GOT: %v; WANT: %v", got, want)
+}
+```
 
 ### OneNewline
 
@@ -48,6 +95,12 @@ one, reusing the same underlying string bytes. When string does not
 end in a OneNewline character, it returns the original string with a
 OneNewline character appended. Newline characters before any
 non-OneNewline characters are ignored.
+
+```Go
+if got, want := gonl.OneNewline("abc\n\ndef\n\n"), "abc\n\ndef\n"; got != want {
+	t.Errorf("GOT: %q; WANT: %q", got, want)
+}
+```
 
 ### PerLineWriter
 
@@ -64,3 +117,20 @@ used to ensure each newline terminated line is individually sent to
 the underlying io.WriteCloser. Calling its Write method only invokes
 Write on the underlying io.WriteCloser with a newline terminated
 sequence of bytes.
+
+```Go
+func ExamplePerLineWriter() error {
+    // Flush completed lines to os.Stdout at least every 512 bytes.
+    lf := gonl.NewPerLineWriter(os.Stdout, 512)
+
+    // Give copy buffer some room.
+    _, rerr := io.CopyBuffer(lf, os.Stdin, make([]byte, 4096))
+
+    // Clean up
+    cerr := lf.Close()
+    if rerr == nil {
+        return cerr
+    }
+    return rerr
+}
+```
