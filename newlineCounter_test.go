@@ -1,9 +1,28 @@
 package gonl
 
 import (
+	"fmt"
+	"os"
 	"strings"
 	"testing"
 )
+
+func ExampleNewlineCounter() {
+	c1, err := NewlineCounter(strings.NewReader("one\ntwo\nthree\n"))
+	if err != nil {
+		os.Exit(1)
+	}
+	fmt.Println(c1)
+
+	c2, err := NewlineCounter(strings.NewReader("one\ntwo\nthree"))
+	if err != nil {
+		os.Exit(1)
+	}
+	fmt.Println(c2)
+	// Output:
+	// 3
+	// 3
+}
 
 func TestNewlineCounter(t *testing.T) {
 	t.Run("sans newline", func(t *testing.T) {

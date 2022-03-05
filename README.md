@@ -54,7 +54,7 @@ final byte read from it is a newline.
 
 ```Go
 func ExampleNewLineTerminatedReader() {
-	r := &LineTerminatedReader{R: bytes.NewReader([]byte("123\n456"))}
+	r := &gonl.LineTerminatedReader{R: bytes.NewReader([]byte("123\n456"))}
 	buf, err := ioutil.ReadAll(r)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
@@ -77,12 +77,21 @@ read. It will return the same number regardless of whether the final
 Read terminated in a newline character or not.
 
 ```Go
-c, err := gonl.NewlineCounter(strings.NewReader("one\ntwo\nthree\n"))
-if err != nil {
-    t.Fatal(err)
-}
-if got, want := c, 3; got != want {
-	t.Errorf("GOT: %v; WANT: %v", got, want)
+func ExampleNewlineCounter() {
+	c1, err := gonl.NewlineCounter(strings.NewReader("one\ntwo\nthree\n"))
+	if err != nil {
+		os.Exit(1)
+	}
+	fmt.Println(c1)
+
+	c2, err := gonl.NewlineCounter(strings.NewReader("one\ntwo\nthree"))
+	if err != nil {
+		os.Exit(1)
+	}
+	fmt.Println(c2)
+	// Output:
+	// 3
+	// 3
 }
 ```
 
@@ -97,9 +106,14 @@ OneNewline character appended. Newline characters before any
 non-OneNewline characters are ignored.
 
 ```Go
-if got, want := gonl.OneNewline("abc\n\ndef\n\n"), "abc\n\ndef\n"; got != want {
-	t.Errorf("GOT: %q; WANT: %q", got, want)
+func ExampleOneNewline() {
+	fmt.Println(gonl.OneNewline("abc\n\ndef\n\n"))
+	// Output:
+	// abc
+	//
+	// def
 }
+
 ```
 
 ### PerLineWriter

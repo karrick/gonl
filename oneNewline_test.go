@@ -1,6 +1,17 @@
 package gonl
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
+
+func ExampleOneNewline() {
+	fmt.Println(OneNewline("abc\n\ndef\n\n"))
+	// Output:
+	// abc
+	//
+	// def
+}
 
 func TestOneNewline(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
