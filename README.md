@@ -3,6 +3,11 @@
 Go newline library provides a small collection of functions and data
 structures useful for stream processing text on newline boundaries.
 
+[![License](https://img.shields.io/badge/License-BSD_2--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
+[![made-with-Go](https://img.shields.io/badge/Made%20with-Go-1f425f.svg)](http://golang.org)
+[![GoDoc](https://godoc.org/github.com/karrick/gonl?status.svg)](https://godoc.org/github.com/karrick/gonl)
+[![GoReportCard](https://goreportcard.com/badge/github.com/karrick/gonl)](https://goreportcard.com/report/github.com/karrick/gonl)
+
 ## Features
 
 ### BatchLineWriter
