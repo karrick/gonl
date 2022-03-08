@@ -52,12 +52,12 @@ func (lw *PerLineWriter) Close() error {
 		// them without a newline before we close the stream.
 		if _, err = lw.wc.Write(lw.unfinished); err != nil {
 			_ = lw.wc.Close()
-			return ErrWrite{err}
+			return err
 		}
 		lw.unfinished = lw.unfinished[:0]
 	}
 	if err = lw.wc.Close(); err != nil {
-		return ErrClose{err}
+		return err
 	}
 	return nil
 }
@@ -100,7 +100,7 @@ func (lw *PerLineWriter) Write(p []byte) (int, error) {
 		}
 
 		if _, err = lw.wc.Write(fullLine); err != nil {
-			return nc, ErrWrite{err}
+			return nc, err
 		}
 
 		nc += index   // update number of bytes processed

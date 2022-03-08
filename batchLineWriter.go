@@ -39,8 +39,9 @@ type BatchLineWriter struct {
 // io.WriteCloser, up to and including the final LF byte.
 //
 //     func Example() error {
-//         // Flush completed lines to os.Stdout at least every 512 bytes.
-//         lf, err := golfw.NewBatchLineWriter(os.Stdout, 512)
+//         // Flush completed lines to os.Stdout at least every 512
+//         // bytes.
+//         lf, err := gonl.NewBatchLineWriter(os.Stdout, 512)
 //         if err != nil {
 //             return err
 //         }
@@ -78,10 +79,13 @@ func (lbf *BatchLineWriter) Close() error {
 	lbf.indexOfFinalNewline = -1
 	ce := lbf.wc.Close()
 	lbf.wc = nil
-	if we == nil {
+	if we != nil {
+		return we
+	}
+	if ce != nil {
 		return ce
 	}
-	return we
+	return nil
 }
 
 // flush flushes buffer to underlying io.WriteCloser, up to and

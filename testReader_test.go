@@ -70,7 +70,7 @@ func TestReader(t *testing.T) {
 		}}
 
 		n, err := tr.Read(buf)
-		ensureError(t, err, "")
+		ensureErrorNil(t, err)
 		if got, want := n, 5; got != want {
 			t.Fatalf("GOT: %v; WANT: %v", got, want)
 		}

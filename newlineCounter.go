@@ -2,6 +2,7 @@ package gonl
 
 import (
 	"bytes"
+	"errors"
 	"io"
 )
 
@@ -35,7 +36,7 @@ func NewlineCounter(r io.Reader) (int, error) {
 			}
 		}
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				err = nil // io.EOF is expected at end of stream
 			}
 			break // do not try to read more if error

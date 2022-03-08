@@ -11,22 +11,32 @@ func TestPerLineWriter(t *testing.T) {
 		lw := NewPerLineWriter(bb, 0)
 
 		nw, err := lw.Write([]byte("line1"))
-		ensureSame(t, nw, 5)
+		if got, want := nw, 5; got != want {
+			t.Errorf("GOT: %v; WANT: %v", got, want)
+		}
 		ensureErrorNil(t, err)
 
 		// nothing written because no newline yet
-		ensureSame(t, bb.String(), "")
+		if got, want := bb.String(), ""; got != want {
+			t.Errorf("GOT: %v; WANT: %v", got, want)
+		}
 
 		nw, err = lw.Write([]byte("\nline2"))
-		ensureSame(t, nw, 6)
+		if got, want := nw, 6; got != want {
+			t.Errorf("GOT: %v; WANT: %v", got, want)
+		}
 		ensureErrorNil(t, err)
 
-		ensureSame(t, bb.String(), "line1\n")
+		if got, want := bb.String(), "line1\n"; got != want {
+			t.Errorf("GOT: %v; WANT: %v", got, want)
+		}
 
 		err = lw.Close()
 		ensureErrorNil(t, err)
 
-		ensureSame(t, bb.String(), "line1\nline2")
+		if got, want := bb.String(), "line1\nline2"; got != want {
+			t.Errorf("GOT: %v; WANT: %v", got, want)
+		}
 	})
 
 	t.Run("buffer size 3", func(t *testing.T) {
@@ -36,21 +46,31 @@ func TestPerLineWriter(t *testing.T) {
 		lw := NewPerLineWriter(bb, bufsize)
 
 		nw, err := lw.Write([]byte("line1"))
-		ensureSame(t, nw, 5)
+		if got, want := nw, 5; got != want {
+			t.Errorf("GOT: %v; WANT: %v", got, want)
+		}
 		ensureErrorNil(t, err)
 
 		// nothing written because no newline yet
-		ensureSame(t, bb.String(), "")
+		if got, want := bb.String(), ""; got != want {
+			t.Errorf("GOT: %v; WANT: %v", got, want)
+		}
 
 		nw, err = lw.Write([]byte("\nline2"))
-		ensureSame(t, nw, 6)
+		if got, want := nw, 6; got != want {
+			t.Errorf("GOT: %v; WANT: %v", got, want)
+		}
 		ensureErrorNil(t, err)
 
-		ensureSame(t, bb.String(), "line1\n")
+		if got, want := bb.String(), "line1\n"; got != want {
+			t.Errorf("GOT: %v; WANT: %v", got, want)
+		}
 
 		err = lw.Close()
 		ensureErrorNil(t, err)
 
-		ensureSame(t, bb.String(), "line1\nline2")
+		if got, want := bb.String(), "line1\nline2"; got != want {
+			t.Errorf("GOT: %v; WANT: %v", got, want)
+		}
 	})
 }

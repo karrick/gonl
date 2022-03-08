@@ -2,6 +2,7 @@ package gonl
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -9,8 +10,9 @@ import (
 	"testing"
 )
 
-// newTestReader returns a LineTerminatedReader that reads from a testReader
-// configured to return the specified tuples when read from.
+// newTestReader returns a LineTerminatedReader that reads from a
+// testReader configured to return the specified tuples when read
+// from.
 func newTestReader(tuples []tuple) *LineTerminatedReader {
 	return &LineTerminatedReader{R: &testReader{tuples: tuples}}
 }
@@ -37,12 +39,13 @@ func TestLineTerminatedReader(t *testing.T) {
 		// Ensures compliance with guidelines set forth in io.Reader
 		// documentation, copied below:
 
-		// When Read encounters an error or end-of-file condition after
-		// successfully reading n > 0 bytes, it returns the number of bytes
-		// read.  It may return the (non-nil) error from the same call or return
-		// the error (and n == 0) from a subsequent call.  An instance of this
-		// general case is that a Reader returning a non-zero number of bytes at
-		// the end of the input stream may return either err == EOF or err ==
+		// When Read encounters an error or end-of-file condition
+		// after successfully reading n > 0 bytes, it returns the
+		// number of bytes read.  It may return the (non-nil) error
+		// from the same call or return the error (and n == 0) from a
+		// subsequent call.  An instance of this general case is that
+		// a Reader returning a non-zero number of bytes at the end of
+		// the input stream may return either err == EOF or err ==
 		// nil.  The next Read should return 0, EOF.
 		t.Run("error during read", func(t *testing.T) {
 			r := newTestReader([]tuple{
@@ -54,8 +57,8 @@ func TestLineTerminatedReader(t *testing.T) {
 			ensureBufferLimit(t, buf, n, "some data")
 		})
 
-		// Implementations of Read are discouraged from returning a zero byte
-		// count with a nil error, except when len(p) == 0.
+		// Implementations of Read are discouraged from returning a
+		// zero byte count with a nil error, except when len(p) == 0.
 		t.Run("final read has no room", func(t *testing.T) {
 			buf := make([]byte, 5)
 
@@ -64,11 +67,11 @@ func TestLineTerminatedReader(t *testing.T) {
 			})
 
 			n, err := r.Read(buf)
-			ensureError(t, err, "")
+			ensureErrorNil(t, err)
 			ensureBufferLimit(t, buf, n, "12345")
 
 			n, err = r.Read(nil)
-			ensureError(t, err, "")
+			ensureErrorNil(t, err)
 			ensureBufferLimit(t, buf, n, "")
 		})
 	})
@@ -105,7 +108,7 @@ func TestLineTerminatedReader(t *testing.T) {
 					})
 
 					n, err := r.Read(buf)
-					ensureError(t, err, "")
+					ensureErrorNil(t, err)
 					ensureBufferLimit(t, buf, n, "one\n")
 
 					n, err = r.Read(buf)
@@ -132,7 +135,7 @@ func TestLineTerminatedReader(t *testing.T) {
 					})
 
 					n, err := r.Read(buf)
-					ensureError(t, err, "")
+					ensureErrorNil(t, err)
 					ensureBufferLimit(t, buf, n, "one")
 
 					n, err = r.Read(buf)
@@ -161,7 +164,7 @@ func TestLineTerminatedReader(t *testing.T) {
 					})
 
 					n, err := r.Read(buf)
-					ensureError(t, err, "")
+					ensureErrorNil(t, err)
 					ensureBufferLimit(t, buf, n, "one\ntwo\n")
 
 					n, err = r.Read(buf)
@@ -188,7 +191,7 @@ func TestLineTerminatedReader(t *testing.T) {
 					})
 
 					n, err := r.Read(buf)
-					ensureError(t, err, "")
+					ensureErrorNil(t, err)
 					ensureBufferLimit(t, buf, n, "1234\n1234")
 
 					n, err = r.Read(buf)
@@ -214,7 +217,7 @@ func TestLineTerminatedReader(t *testing.T) {
 						})
 
 						n, err := r.Read(buf)
-						ensureError(t, err, "")
+						ensureErrorNil(t, err)
 						ensureBufferLimit(t, buf, n, "12345")
 
 						n, err = r.Read(buf)
@@ -223,6 +226,32 @@ func TestLineTerminatedReader(t *testing.T) {
 					})
 				})
 			})
+		})
+		t.Run("wrapped io.EOF errors", func(t *testing.T) {
+			buf := make([]byte, 5)
+
+			wrappedErr := &ErrIO{Err: io.EOF}
+
+			r := newTestReader([]tuple{
+				tuple{"12345", wrappedErr},
+			})
+
+			n, err := r.Read(buf)
+			ensureBufferLimit(t, buf, n, "12345")
+			ensureErrorNil(t, err)
+
+			n, err = r.Read(buf)
+			ensureBufferLimit(t, buf, n, "\n")
+
+			// Should receive exact error given.
+			if err == io.EOF {
+				// should not be unwrapped error
+				t.Errorf("GOT: %T(%v); WANT: %T(%v)", err, err, wrappedErr, wrappedErr)
+			}
+			if !errors.Is(err, io.EOF) {
+				// should be wrapped error
+				t.Errorf("GOT: %T(%v); WANT: %T(%v)", err, err, wrappedErr, wrappedErr)
+			}
 		})
 	})
 }
