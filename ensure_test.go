@@ -19,9 +19,9 @@ func (e *ErrIO) Error() string { return e.Op + ": " + e.Err.Error() }
 
 func (e *ErrIO) Unwrap() error { return e.Err }
 
-func ensureBuffer(tb testing.TB, got interface{ Bytes() []byte }, want string) {
+func ensureBuffer(tb testing.TB, got interface{ String() string }, want string) {
 	tb.Helper()
-	if g, w := string(got.Bytes()), want; g != w {
+	if g, w := got.String(), want; g != w {
 		tb.Errorf("GOT: %q; WANT: %q", g, w)
 	}
 }

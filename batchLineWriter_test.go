@@ -1,7 +1,6 @@
 package gonl
 
 import (
-	"bytes"
 	"io"
 	"testing"
 )
@@ -77,8 +76,8 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureError(t, err)
 		})
 		t.Run("buf has newlines", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			wc, err := NewBatchLineWriter(NopCloseWriter(output), 16)
+			output := new(testBuffer)
+			wc, err := NewBatchLineWriter(output, 16)
 			ensureError(t, err)
 			ensureWrite(t, wc, "line 1\n")
 			ensureWrite(t, wc, "line 2")
@@ -94,8 +93,8 @@ func TestBatchLineWriter(t *testing.T) {
 
 	t.Run("Write", func(t *testing.T) {
 		t.Run("buf empty | data no newline | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 8)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 8)
 			ensureError(t, err)
 
 			p := "unterminated line"
@@ -108,8 +107,8 @@ func TestBatchLineWriter(t *testing.T) {
 		})
 
 		t.Run("buf empty | data single newline | at end | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 32)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 32)
 			ensureError(t, err)
 
 			p := "terminated line\n"
@@ -121,8 +120,8 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "")
 		})
 		t.Run("buf empty | data single newline | at end | flush | no write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 8)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 8)
 			ensureError(t, err)
 
 			p := "terminated line\n"
@@ -133,7 +132,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, p)
 		})
 		t.Run("buf empty | data single newline | at end | flush | write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 8)
 			ensureError(t, err)
 
@@ -147,8 +146,8 @@ func TestBatchLineWriter(t *testing.T) {
 		})
 
 		t.Run("buf empty | data single newline | not at end | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 32)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 32)
 			ensureError(t, err)
 
 			p := "terminated\nline"
@@ -160,8 +159,8 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "")
 		})
 		t.Run("buf empty | data single newline | not at end | flush | no write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 8)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 8)
 			ensureError(t, err)
 
 			p := "terminated\nline"
@@ -173,7 +172,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "terminated\n")
 		})
 		t.Run("buf empty | data single newline | not at end | flush | write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 8)
 			ensureError(t, err)
 
@@ -187,8 +186,8 @@ func TestBatchLineWriter(t *testing.T) {
 		})
 
 		t.Run("buf empty | data multiple newlines | at end | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 32)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 32)
 			ensureError(t, err)
 
 			p := "terminated\nline\n"
@@ -200,8 +199,8 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "")
 		})
 		t.Run("buf empty | data multiple newlines | at end | flush | no write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 8)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 8)
 			ensureError(t, err)
 
 			p := "terminated\nline\n"
@@ -212,7 +211,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "terminated\nline\n")
 		})
 		t.Run("buf empty | data multiple newlines | at end | flush | write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 8)
 			ensureError(t, err)
 
@@ -226,8 +225,8 @@ func TestBatchLineWriter(t *testing.T) {
 		})
 
 		t.Run("buf empty | data multiple newlines | not at end | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 32)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 32)
 			ensureError(t, err)
 
 			p := "terminated\nline\nhere"
@@ -239,8 +238,8 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "")
 		})
 		t.Run("buf empty | data multiple newlines | not at end | flush | no write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 8)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 8)
 			ensureError(t, err)
 
 			p := "terminated\nline\nhere"
@@ -252,7 +251,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "terminated\nline\n")
 		})
 		t.Run("buf empty | data multiple newlines | not at end | flush | write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 8)
 			ensureError(t, err)
 
@@ -270,8 +269,8 @@ func TestBatchLineWriter(t *testing.T) {
 		//
 
 		t.Run("buf not empty | buf multiple newlines | at end | data multiple newlines | at end | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 32)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 32)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\n")
 
@@ -284,8 +283,8 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "")
 		})
 		t.Run("buf not empty | buf multiple newlines | at end | data multiple newlines | at end | flush | no write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 16)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 16)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\n")
 
@@ -297,7 +296,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "line 1\nline 2\nline 3\nline 4\nline 5\n")
 		})
 		t.Run("buf not empty | buf multiple newlines | at end | data multiple newlines | at end | flush | write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 16)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\n")
@@ -313,8 +312,8 @@ func TestBatchLineWriter(t *testing.T) {
 		})
 
 		t.Run("buf not empty | buf multiple newlines | at end | data multiple newlines | not at end | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 32)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 32)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\n")
 
@@ -327,8 +326,8 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "")
 		})
 		t.Run("buf not empty | buf multiple newlines | at end | data multiple newlines | not at end | flush | no write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 32)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 32)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\n")
 
@@ -341,7 +340,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "")
 		})
 		t.Run("buf not empty | buf multiple newlines | at end | data multiple newlines | not at end | flush | write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 16)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\n")
@@ -357,8 +356,8 @@ func TestBatchLineWriter(t *testing.T) {
 		})
 
 		t.Run("buf not empty | buf multiple newlines | at end | data no newline | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 32)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 32)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\n")
 
@@ -371,8 +370,8 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "")
 		})
 		t.Run("buf not empty | buf multiple newlines | at end | data no newline | flush | no write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 16)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 16)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\n")
 
@@ -385,7 +384,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "line 1\nline 2\n")
 		})
 		t.Run("buf not empty | buf multiple newlines | at end | data no newline | flush | write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 16)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\n")
@@ -401,8 +400,8 @@ func TestBatchLineWriter(t *testing.T) {
 		})
 
 		t.Run("buf not empty | buf multiple newlines | at end | data single newline | at end | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 32)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 32)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\n")
 
@@ -415,8 +414,8 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "")
 		})
 		t.Run("buf not empty | buf multiple newlines | at end | data single newline | at end | flush | no write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 16)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 16)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\n")
 
@@ -428,7 +427,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "line 1\nline 2\nline 3\n")
 		})
 		t.Run("buf not empty | buf multiple newlines | at end | data single newline | at end | flush | write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 16)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\n")
@@ -444,8 +443,8 @@ func TestBatchLineWriter(t *testing.T) {
 		})
 
 		t.Run("buf not empty | buf multiple newlines | at end | data single newline | not at end | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 32)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 32)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\n")
 
@@ -458,8 +457,8 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "")
 		})
 		t.Run("buf not empty | buf multiple newlines | at end | data single newline | not at end | flush | no write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 16)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 16)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\n")
 
@@ -472,7 +471,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "line 1\nline 2\nline 3\n")
 		})
 		t.Run("buf not empty | buf multiple newlines | at end | data single newline | not at end | flush | write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 16)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\n")
@@ -488,8 +487,8 @@ func TestBatchLineWriter(t *testing.T) {
 		})
 
 		t.Run("buf not empty | buf multiple newlines | not at end | data multiple newlines | at end | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 64)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 64)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\nline 3")
 
@@ -502,8 +501,8 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "")
 		})
 		t.Run("buf not empty | buf multiple newlines | not at end | data multiple newlines | at end | flush | no write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 24)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 24)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\nline 3")
 
@@ -515,7 +514,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "line 1\nline 2\nline 3\nline 4\nline 5\n")
 		})
 		t.Run("buf not empty | buf multiple newlines | not at end | data multiple newlines | at end | flush | write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 24)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\nline 3")
@@ -531,8 +530,8 @@ func TestBatchLineWriter(t *testing.T) {
 		})
 
 		t.Run("buf not empty | buf multiple newlines | not at end | data multiple newlines | not at end | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 64)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 64)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\nline 3")
 
@@ -545,8 +544,8 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "")
 		})
 		t.Run("buf not empty | buf multiple newlines | not at end | data multiple newlines | not at end | flush | no write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 24)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 24)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\nline 3")
 
@@ -559,7 +558,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "line 1\nline 2\nline 3\nline 4\n")
 		})
 		t.Run("buf not empty | buf multiple newlines | not at end | data multiple newlines | not at end | flush | write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 24)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\nline 3")
@@ -575,8 +574,8 @@ func TestBatchLineWriter(t *testing.T) {
 		})
 
 		t.Run("buf not empty | buf multiple newlines | not at end | data no newline | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 64)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 64)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\nline 3")
 
@@ -589,8 +588,8 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "")
 		})
 		t.Run("buf not empty | buf multiple newlines | not at end | data no newline | flush | no write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 16)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 16)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\nline 3")
 
@@ -603,7 +602,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "line 1\nline 2\n")
 		})
 		t.Run("buf not empty | buf multiple newlines | not at end | data no newline | flush | write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 24)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\nline 3")
@@ -619,8 +618,8 @@ func TestBatchLineWriter(t *testing.T) {
 		})
 
 		t.Run("buf not empty | buf multiple newlines | not at end | data single newline | at end | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 32)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 32)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\nline 3")
 
@@ -633,8 +632,8 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "")
 		})
 		t.Run("buf not empty | buf multiple newlines | not at end | data single newline | at end | flush | no write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 24)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 24)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\nline 3")
 
@@ -646,7 +645,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "line 1\nline 2\nline 3line 4\n")
 		})
 		t.Run("buf not empty | buf multiple newlines | not at end | data single newline | at end | flush | write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 24)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\nline 3")
@@ -662,7 +661,7 @@ func TestBatchLineWriter(t *testing.T) {
 		})
 
 		t.Run("buf not empty | buf multiple newlines | not at end | data single newline | not at end | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 24)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\nline 3")
@@ -677,8 +676,8 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "line")
 		})
 		t.Run("buf not empty | buf multiple newlines | not at end | data single newline | not at end | flush | no write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 24)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 24)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\nline 3")
 
@@ -691,7 +690,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "line 1\nline 2\nline 3\n")
 		})
 		t.Run("buf not empty | buf multiple newlines | not at end | data single newline | not at end | flush | write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 24)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\nline 2\nline 3")
@@ -707,8 +706,8 @@ func TestBatchLineWriter(t *testing.T) {
 		})
 
 		t.Run("buf not empty | buf no newline | data multiple newlines | not at end | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 32)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 32)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1")
 
@@ -721,8 +720,8 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "")
 		})
 		t.Run("buf not empty | buf no newline | data multiple newlines | not at end | flush | no write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 24)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 24)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1")
 
@@ -735,7 +734,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "line 1\nline 2\nline 3\n")
 		})
 		t.Run("buf not empty | buf no newline | data multiple newlines | not at end | flush | write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 24)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1")
@@ -751,8 +750,8 @@ func TestBatchLineWriter(t *testing.T) {
 		})
 
 		t.Run("buf not empty | buf no newline | data no newline | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 16)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 16)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1")
 
@@ -770,7 +769,7 @@ func TestBatchLineWriter(t *testing.T) {
 		// })
 
 		t.Run("buf not empty | buf no newline | data single newline | at end | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 16)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1")
@@ -784,8 +783,8 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "")
 		})
 		t.Run("buf not empty | buf no newline | data single newline | at end | flush | no write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 8)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 8)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1")
 
@@ -797,7 +796,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "line 1line 2\n")
 		})
 		t.Run("buf not empty | buf no newline | data single newline | at end | flush | write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 8)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1")
@@ -813,8 +812,8 @@ func TestBatchLineWriter(t *testing.T) {
 		})
 
 		t.Run("buf not empty | buf no newline | data single newline | not at end | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 16)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 16)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1")
 
@@ -827,8 +826,8 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "")
 		})
 		t.Run("buf not empty | buf no newline | data single newline | not at end | flush | no write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 8)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 8)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1")
 
@@ -841,7 +840,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "line 1\n")
 		})
 		t.Run("buf not empty | buf no newline | data single newline | not at end | flush | write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 8)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1")
@@ -857,8 +856,8 @@ func TestBatchLineWriter(t *testing.T) {
 		})
 
 		t.Run("buf not empty | buf single newline | at end | data multiple newlines | at end | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 32)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 32)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\n")
 
@@ -871,8 +870,8 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "")
 		})
 		t.Run("buf not empty | buf single newline | at end | data multiple newlines | at end | flush | no write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 16)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 16)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\n")
 
@@ -884,7 +883,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "line 1\nline 2\nline 3\n")
 		})
 		t.Run("buf not empty | buf single newline | at end | data multiple newlines | at end | flush | write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 16)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\n")
@@ -900,8 +899,8 @@ func TestBatchLineWriter(t *testing.T) {
 		})
 
 		t.Run("buf not empty | buf single newline | at end | data multiple newlines | not at end | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 32)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 32)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\n")
 
@@ -914,8 +913,8 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "")
 		})
 		t.Run("buf not empty | buf single newline | at end | data multiple newlines | not at end | flush | no write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 16)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 16)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\n")
 
@@ -928,7 +927,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "line 1\nline 2\nline 3\n")
 		})
 		t.Run("buf not empty | buf single newline | at end | data multiple newlines | not at end | flush | write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 16)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\n")
@@ -944,8 +943,8 @@ func TestBatchLineWriter(t *testing.T) {
 		})
 
 		t.Run("buf not empty | buf single newline | at end | data no newline | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 16)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 16)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\n")
 
@@ -958,8 +957,8 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "")
 		})
 		t.Run("buf not empty | buf single newline | at end | data no newline | flush | no write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 8)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 8)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\n")
 
@@ -972,7 +971,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "line 1\n")
 		})
 		t.Run("buf not empty | buf single newline | at end | data no newline | flush | write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 8)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\n")
@@ -988,8 +987,8 @@ func TestBatchLineWriter(t *testing.T) {
 		})
 
 		t.Run("buf not empty | buf single newline | at end | data single newline | at end | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 16)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 16)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\n")
 
@@ -1002,8 +1001,8 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "")
 		})
 		t.Run("buf not empty | buf single newline | at end | data single newline | at end | flush | no write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 8)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 8)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\n")
 
@@ -1015,7 +1014,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "line 1\nline 2\n")
 		})
 		t.Run("buf not empty | buf single newline | at end | data single newline | at end | flush | write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 8)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\n")
@@ -1031,8 +1030,8 @@ func TestBatchLineWriter(t *testing.T) {
 		})
 
 		t.Run("buf not empty | buf single newline | at end | data single newline | not at end | no flush", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 32)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 32)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\n")
 
@@ -1045,8 +1044,8 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "")
 		})
 		t.Run("buf not empty | buf single newline | at end | data single newline | not at end | flush | no write error", func(t *testing.T) {
-			output := new(bytes.Buffer)
-			lbf, err := NewBatchLineWriter(NopCloseWriter(output), 8)
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 8)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\n")
 
@@ -1059,7 +1058,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "line 1\nline 2\n")
 		})
 		t.Run("buf not empty | buf single newline | at end | data single newline | not at end | flush | write error | no new bytes", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 8)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\n")
@@ -1074,7 +1073,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "line")
 		})
 		t.Run("buf not empty | buf single newline | at end | data multiple newlines | at end | flush | write error | zero new bytes", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 7)), 16)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\n")
@@ -1088,7 +1087,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureBuffer(t, output, "line 1\n")
 		})
 		t.Run("buf not empty | buf single newline | at end | data multiple newlines | at end | flush | write error | some new bytes", func(t *testing.T) {
-			output := new(bytes.Buffer)
+			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 12)), 16)
 			ensureError(t, err)
 			ensureWrite(t, lbf, "line 1\n")
@@ -1107,8 +1106,8 @@ func TestBatchLineWriter(t *testing.T) {
 			const data = "\nline 3\nline 4"
 
 			t.Run("no flush", func(t *testing.T) {
-				output := new(bytes.Buffer)
-				lbf, err := NewBatchLineWriter(NopCloseWriter(output), 32)
+				output := new(testBuffer)
+				lbf, err := NewBatchLineWriter(output, 32)
 				ensureError(t, err)
 				ensureWrite(t, lbf, buf)
 
@@ -1120,8 +1119,8 @@ func TestBatchLineWriter(t *testing.T) {
 				ensureBuffer(t, output, "")
 			})
 			t.Run("write", func(t *testing.T) {
-				output := new(bytes.Buffer)
-				lbf, err := NewBatchLineWriter(NopCloseWriter(output), 16)
+				output := new(testBuffer)
+				lbf, err := NewBatchLineWriter(output, 16)
 				ensureError(t, err)
 				ensureWrite(t, lbf, buf)
 
@@ -1133,7 +1132,7 @@ func TestBatchLineWriter(t *testing.T) {
 				ensureBuffer(t, output, "line 1\nline 2\nline 3\n")
 			})
 			t.Run("error", func(t *testing.T) {
-				output := new(bytes.Buffer)
+				output := new(testBuffer)
 				lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 16)
 				ensureError(t, err)
 				ensureWrite(t, lbf, buf)
@@ -1153,8 +1152,8 @@ func TestBatchLineWriter(t *testing.T) {
 			const data = "\nline 2\nline 3"
 
 			t.Run("no flush", func(t *testing.T) {
-				output := new(bytes.Buffer)
-				lbf, err := NewBatchLineWriter(NopCloseWriter(output), 32)
+				output := new(testBuffer)
+				lbf, err := NewBatchLineWriter(output, 32)
 				ensureError(t, err)
 				ensureWrite(t, lbf, buf)
 
@@ -1166,8 +1165,8 @@ func TestBatchLineWriter(t *testing.T) {
 				ensureBuffer(t, output, "")
 			})
 			t.Run("write", func(t *testing.T) {
-				output := new(bytes.Buffer)
-				lbf, err := NewBatchLineWriter(NopCloseWriter(output), 16)
+				output := new(testBuffer)
+				lbf, err := NewBatchLineWriter(output, 16)
 				ensureError(t, err)
 				ensureWrite(t, lbf, buf)
 
@@ -1179,7 +1178,7 @@ func TestBatchLineWriter(t *testing.T) {
 				ensureBuffer(t, output, "\nline 1\nline 2\n")
 			})
 			t.Run("error", func(t *testing.T) {
-				output := new(bytes.Buffer)
+				output := new(testBuffer)
 				lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 16)
 				ensureError(t, err)
 				ensureWrite(t, lbf, buf)
@@ -1199,8 +1198,8 @@ func TestBatchLineWriter(t *testing.T) {
 			const data = "line 3"
 
 			t.Run("no flush", func(t *testing.T) {
-				output := new(bytes.Buffer)
-				lbf, err := NewBatchLineWriter(NopCloseWriter(output), 32)
+				output := new(testBuffer)
+				lbf, err := NewBatchLineWriter(output, 32)
 				ensureError(t, err)
 				ensureWrite(t, lbf, buf)
 
@@ -1212,8 +1211,8 @@ func TestBatchLineWriter(t *testing.T) {
 				ensureBuffer(t, output, "")
 			})
 			t.Run("write", func(t *testing.T) {
-				output := new(bytes.Buffer)
-				lbf, err := NewBatchLineWriter(NopCloseWriter(output), 8)
+				output := new(testBuffer)
+				lbf, err := NewBatchLineWriter(output, 8)
 				ensureError(t, err)
 				ensureWrite(t, lbf, buf)
 
@@ -1225,7 +1224,7 @@ func TestBatchLineWriter(t *testing.T) {
 				ensureBuffer(t, output, "line 1\n")
 			})
 			t.Run("error", func(t *testing.T) {
-				output := new(bytes.Buffer)
+				output := new(testBuffer)
 				lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 16)
 				ensureError(t, err)
 				ensureWrite(t, lbf, buf)
@@ -1245,8 +1244,8 @@ func TestBatchLineWriter(t *testing.T) {
 			const data = "line 3\n"
 
 			t.Run("no flush", func(t *testing.T) {
-				output := new(bytes.Buffer)
-				lbf, err := NewBatchLineWriter(NopCloseWriter(output), 32)
+				output := new(testBuffer)
+				lbf, err := NewBatchLineWriter(output, 32)
 				ensureError(t, err)
 				ensureWrite(t, lbf, buf)
 
@@ -1258,8 +1257,8 @@ func TestBatchLineWriter(t *testing.T) {
 				ensureBuffer(t, output, "")
 			})
 			t.Run("write", func(t *testing.T) {
-				output := new(bytes.Buffer)
-				lbf, err := NewBatchLineWriter(NopCloseWriter(output), 8)
+				output := new(testBuffer)
+				lbf, err := NewBatchLineWriter(output, 8)
 				ensureError(t, err)
 				ensureWrite(t, lbf, buf)
 
@@ -1270,7 +1269,7 @@ func TestBatchLineWriter(t *testing.T) {
 				ensureBuffer(t, output, "line 1\nline 2line 3\n")
 			})
 			t.Run("error", func(t *testing.T) {
-				output := new(bytes.Buffer)
+				output := new(testBuffer)
 				lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 16)
 				ensureError(t, err)
 				ensureWrite(t, lbf, buf)
@@ -1290,8 +1289,8 @@ func TestBatchLineWriter(t *testing.T) {
 			const data = "\nline 3"
 
 			t.Run("no flush", func(t *testing.T) {
-				output := new(bytes.Buffer)
-				lbf, err := NewBatchLineWriter(NopCloseWriter(output), 32)
+				output := new(testBuffer)
+				lbf, err := NewBatchLineWriter(output, 32)
 				ensureError(t, err)
 				ensureWrite(t, lbf, buf)
 
@@ -1303,8 +1302,8 @@ func TestBatchLineWriter(t *testing.T) {
 				ensureBuffer(t, output, "")
 			})
 			t.Run("write", func(t *testing.T) {
-				output := new(bytes.Buffer)
-				lbf, err := NewBatchLineWriter(NopCloseWriter(output), 8)
+				output := new(testBuffer)
+				lbf, err := NewBatchLineWriter(output, 8)
 				ensureError(t, err)
 				ensureWrite(t, lbf, buf)
 
@@ -1316,7 +1315,7 @@ func TestBatchLineWriter(t *testing.T) {
 				ensureBuffer(t, output, "line 1\nline 2\n")
 			})
 			t.Run("error", func(t *testing.T) {
-				output := new(bytes.Buffer)
+				output := new(testBuffer)
 				lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 16)
 				ensureError(t, err)
 				ensureWrite(t, lbf, buf)
