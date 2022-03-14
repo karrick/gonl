@@ -27,10 +27,10 @@ type PerLineWriter struct {
 // writes each newline terminated line to the provided
 // io.WriteCloser. When a PerLineWriter is closed, it flushes any
 // remaining bytes, then closes the provided io.WriteCloser. BUFSIZE
-// may be zero, but this requires an unsigned integer in order to
-// prevent need to check for negative argument value, and potentially
-// having to return an error, and clients having to check an error
-// return value.
+// may be zero, but this function requires an unsigned integer in
+// order to prevent need to check for negative argument value, and
+// potentially having to return an error, and clients having to check
+// an error return value.
 func NewPerLineWriter(wc io.WriteCloser, bufsize uint) *PerLineWriter {
 	lw := &PerLineWriter{wc: wc}
 
@@ -56,10 +56,8 @@ func (lw *PerLineWriter) Close() error {
 		}
 		lw.unfinished = lw.unfinished[:0]
 	}
-	if err = lw.wc.Close(); err != nil {
-		return err
-	}
-	return nil
+
+	return lw.wc.Close()
 }
 
 // Write invokes Write on the underlying io.WriteCloser for each
