@@ -54,7 +54,7 @@ final byte read from it is a newline.
 
 ```Go
 func ExampleNewLineTerminatedReader() {
-	r := &gonl.LineTerminatedReader{R: bytes.NewReader([]byte("123\n456"))}
+	r := &gonl.LineTerminatedReader{R: strings.NewReader("123\n456")}
 	buf, err := ioutil.ReadAll(r)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)

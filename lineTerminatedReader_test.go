@@ -1,12 +1,12 @@
 package gonl
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -18,7 +18,7 @@ func newTestReader(tuples []tuple) *LineTerminatedReader {
 }
 
 func ExampleNewLineTerminatedReader() {
-	r := &LineTerminatedReader{R: bytes.NewReader([]byte("123\n456"))}
+	r := &LineTerminatedReader{R: strings.NewReader("123\n456")}
 	buf, err := ioutil.ReadAll(r)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
