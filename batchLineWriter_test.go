@@ -131,6 +131,19 @@ func TestBatchLineWriter(t *testing.T) {
 			})
 			ensureBuffer(t, output, p)
 		})
+		t.Run("buf empty | data single newline | at end | exact flush | no write error", func(t *testing.T) {
+			// Flush when buffer is exactly full and final newline.
+			output := new(testBuffer)
+			lbf, err := NewBatchLineWriter(output, 16)
+			ensureError(t, err)
+
+			p := "terminated line\n"
+			ensureWriteResponse(t, lbf, p, wantState{
+				n:                   len(p),
+				indexOfFinalNewline: -1,
+			})
+			ensureBuffer(t, output, p)
+		})
 		t.Run("buf empty | data single newline | at end | flush | write error", func(t *testing.T) {
 			output := new(testBuffer)
 			lbf, err := NewBatchLineWriter(NopCloseWriter(ShortWriter(output, 4)), 8)

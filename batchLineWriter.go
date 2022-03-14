@@ -21,7 +21,6 @@ import (
 // terminated sequence of bytes, potentially with more than one line
 // being written at a time.
 type BatchLineWriter struct {
-	// Accumulated bytes waiting for newline.
 	buf []byte
 
 	wc io.WriteCloser
@@ -56,12 +55,12 @@ type BatchLineWriter struct {
 //         }
 //         return rerr
 //     }
-func NewBatchLineWriter(iowc io.WriteCloser, flushThreshold int) (*BatchLineWriter, error) {
+func NewBatchLineWriter(wc io.WriteCloser, flushThreshold int) (*BatchLineWriter, error) {
 	if flushThreshold <= 0 {
 		return nil, fmt.Errorf("cannot create BatchLineWriter when flushThreshold less than or equal to 0: %d", flushThreshold)
 	}
 	return &BatchLineWriter{
-		wc:                  iowc,
+		wc:                  wc,
 		flushThreshold:      flushThreshold,
 		indexOfFinalNewline: -1,
 	}, nil
@@ -73,62 +72,59 @@ func NewBatchLineWriter(iowc io.WriteCloser, flushThreshold int) (*BatchLineWrit
 // the bytes to the underlying io.WriteCloser, or an error caused by
 // closing it. Use this method when done with a BatchLineWriter to
 // prevent data loss.
-func (lbf *BatchLineWriter) Close() error {
-	_, we := lbf.wc.Write(lbf.buf)
-	lbf.buf = nil
-	lbf.indexOfFinalNewline = -1
-	ce := lbf.wc.Close()
-	lbf.wc = nil
-	if we != nil {
-		return we
+func (lw *BatchLineWriter) Close() error {
+	_, werr := lw.wc.Write(lw.buf)
+	lw.buf = nil
+	lw.indexOfFinalNewline = -1
+	cerr := lw.wc.Close()
+	lw.wc = nil
+	if werr != nil {
+		return werr
 	}
-	if ce != nil {
-		return ce
-	}
-	return nil
+	return cerr
 }
 
 // flush flushes buffer to underlying io.WriteCloser, up to and
 // including specified index.
-func (lbf *BatchLineWriter) flush(olen, dlen, index int) (int, error) {
-	nw, err := lbf.wc.Write(lbf.buf[:index])
+func (lw *BatchLineWriter) flush(olen, dlen, index int) (int, error) {
+	nw, err := lw.wc.Write(lw.buf[:index])
 	if nw > 0 {
-		nc := copy(lbf.buf, lbf.buf[nw:])
-		lbf.buf = lbf.buf[:nc]
+		nc := copy(lw.buf, lw.buf[nw:])
+		lw.buf = lw.buf[:nc]
 	}
 	if err == nil {
-		lbf.indexOfFinalNewline -= nw
+		lw.indexOfFinalNewline -= nw
 		return dlen, nil
 	}
 	// nb is the number new bytes from p that got written to file.
 	nb := nw - olen
 	if nb < 0 {
-		lbf.buf = lbf.buf[:-nb]
+		lw.buf = lw.buf[:-nb]
 		nb = 0
 	} else {
-		lbf.buf = lbf.buf[:0]
+		lw.buf = lw.buf[:0]
 	}
-	lbf.indexOfFinalNewline = bytes.LastIndexByte(lbf.buf, '\n')
+	lw.indexOfFinalNewline = bytes.LastIndexByte(lw.buf, '\n')
 	return nb, err
 }
 
 // Write appends bytes from p to the internal buffer, flushing buffer
 // up to and including the final LF when buffer length exceeds
 // threshold specified when creating the BatchLineWriter.
-func (lbf *BatchLineWriter) Write(p []byte) (int, error) {
-	olen := len(lbf.buf)
-	lbf.buf = append(lbf.buf, p...)
+func (lw *BatchLineWriter) Write(p []byte) (int, error) {
+	olen := len(lw.buf)
+	lw.buf = append(lw.buf, p...)
 
 	if finalIndex := bytes.LastIndexByte(p, '\n'); finalIndex >= 0 {
-		lbf.indexOfFinalNewline = olen + finalIndex
+		lw.indexOfFinalNewline = olen + finalIndex
 	}
 
-	if len(lbf.buf) <= lbf.flushThreshold || lbf.indexOfFinalNewline < 0 {
+	if len(lw.buf) < lw.flushThreshold || lw.indexOfFinalNewline < 0 {
 		// Either do not need to flush, or no newline in buffer
 		return len(p), nil
 	}
 
 	// Buffer larger than threshold, and has LF: write everything up
 	// to and including that final LF.
-	return lbf.flush(olen, len(p), lbf.indexOfFinalNewline+1)
+	return lw.flush(olen, len(p), lw.indexOfFinalNewline+1)
 }
