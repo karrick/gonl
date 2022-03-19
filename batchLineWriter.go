@@ -26,11 +26,13 @@ const smallBufferSize = 64
 // terminated sequence of bytes, potentially with more than one line
 // being written at a time.
 type BatchLineWriter struct {
-	buf []byte // contents buf[offset:len(buf)]
+	// contents buf[offset:len(buf)]
+	buf []byte
 
 	wc io.WriteCloser
 
-	off int // read at buf[off:]; write at buf[:len(buf)]
+	// read at buf[off:]; write at buf[:len(buf)]
+	off int
 
 	// Flush on LF after buffer this size or larger.
 	flushThreshold int
@@ -73,6 +75,10 @@ func NewBatchLineWriter(wc io.WriteCloser, flushThreshold int) (*BatchLineWriter
 	}, nil
 }
 
+// bufferGrow will ensure the backing buffer has enough room to hold
+// at least n more bytes, reslicing the data in the buffer if
+// possible, and expanding the backing array if necessary. It returns
+// the index into the buffer where bytes may be added.
 func (lw *BatchLineWriter) bufferGrow(n int) int {
 	m := lw.bufferLength()
 	if m == 0 && lw.off != 0 {
@@ -126,8 +132,13 @@ func (lw *BatchLineWriter) bufferGrowInline(n int) (int, bool) {
 	return 0, false
 }
 
+// bufferLength returns the number of bytes the buffer holds, ignoring
+// the data already processed. Similar to len(lw.buf) for a
+// non-sliding buffer.
 func (lw *BatchLineWriter) bufferLength() int { return len(lw.buf) - lw.off }
 
+// bufferReset resets the buffer so it does not have any usable bytes,
+// but keeps the allocated backing array.
 func (lw *BatchLineWriter) bufferReset() {
 	lw.buf = lw.buf[:0]
 	lw.indexOfFinalNewline = -1
@@ -203,6 +214,67 @@ func (lw *BatchLineWriter) flush(leno, lenp, index int) (int, error) {
 	return 0, err
 }
 
+// ReadFrom reads data from r until io.EOF or error, periodically
+// flushing one or more completed newlines to the underlying
+// io.WriteCloser when the buffer length exceeds the configured
+// BatchLineWriter threshold size. The return value is the number of
+// bytes read from r. Any error except io.EOF encountered during the
+// read or during a flushing Write is also returned.
+//
+// This method is provided to satisfy the io.ReaderFrom interface,
+// which the io.Copy function uses if available, eliminating the need
+// to copy bytes from the io.Reader, through two buffers, and finally
+// to the io.Writer.
+func (lw *BatchLineWriter) ReadFrom(r io.Reader) (int64, error) {
+	var totalRead int64
+
+	for {
+		leno := lw.bufferLength()
+		m := lw.bufferGrow(minRead)
+		lw.buf = lw.buf[:m]
+
+		nr, rerr := r.Read(lw.buf[m:cap(lw.buf)])
+		if nr < 0 {
+			return totalRead, errors.New("invalid read result")
+		}
+
+		lw.buf = lw.buf[:m+nr]
+
+		// NEWLINE LOGIC
+
+		p := lw.buf[m : m+nr]
+		if finalIndex := bytes.LastIndexByte(p, '\n'); finalIndex >= 0 {
+			lw.indexOfFinalNewline = m + finalIndex
+		}
+
+		if lw.bufferLength() >= lw.flushThreshold && lw.indexOfFinalNewline >= 0 {
+			// Flush some data
+			nw, werr := lw.flush(leno, len(p), lw.indexOfFinalNewline+1)
+			if werr != nil {
+				return totalRead + int64(nw), werr
+			}
+		}
+
+		// END OF NEWLINE LOGIC
+
+		totalRead += int64(nr)
+
+		if rerr == io.EOF {
+			// NOTE: This does not flush remaining data, because there
+			// may be additional bytes to send to line writer.
+			return totalRead, nil
+		}
+		if rerr != nil {
+			// NOTE: This does not flush remaining data, because there
+			// may be additional bytes to send to line writer.
+			return totalRead, rerr
+		}
+	}
+}
+
+// Write appends bytes from p to the internal buffer, flushing buffer
+// up to and including the final LF when buffer length exceeds
+// threshold specified when creating the BatchLineWriter.
 func (lw *BatchLineWriter) Write(p []byte) (int, error) {
 	leno := lw.bufferLength()
 

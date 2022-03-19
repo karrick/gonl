@@ -1,15 +1,11 @@
 package gonl
 
 import (
-	_ "embed"
+	"bytes"
 	"errors"
 	"io"
-	"strings"
 	"testing"
 )
-
-//go:embed 2600-h.htm
-var novel string
 
 // copyBuffer is a modified version of similarly named function in
 // standard library, provided here so we can prevent it from using
@@ -53,16 +49,17 @@ func copyBuffer(dst io.Writer, src io.Reader, buf []byte) (int64, error) {
 }
 
 func BenchmarkBatchLineWriter(b *testing.B) {
-	const threshold = 1024
+	const threshold = 32 * 1024 // use same size as copy
 
-	b.Run("ReaderFrom", func(b *testing.B) {
+	b.Run("ReadFrom", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			output, err := NewBatchLineWriter(new(testBuffer), threshold)
+			discard := NopCloseWriter(io.Discard)
+			output, err := NewBatchLineWriter(discard, threshold)
 			if err != nil {
 				b.Fatal(err)
 			}
 
-			_, err = output.ReadFrom(strings.NewReader(novel))
+			_, err = output.ReadFrom(bytes.NewReader(novel))
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -75,12 +72,13 @@ func BenchmarkBatchLineWriter(b *testing.B) {
 
 	b.Run("Write", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			output, err := NewBatchLineWriter(new(testBuffer), threshold)
+			discard := NopCloseWriter(io.Discard)
+			output, err := NewBatchLineWriter(discard, threshold)
 			if err != nil {
 				b.Fatal(err)
 			}
 
-			_, err = copyBuffer(output, strings.NewReader(novel), nil)
+			_, err = copyBuffer(output, bytes.NewReader(novel), nil)
 			if err != nil {
 				b.Fatal(err)
 			}

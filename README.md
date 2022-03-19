@@ -28,22 +28,35 @@ terminated sequence of bytes, potentially with more than one line
 being written at a time.
 
 ```Go
-func ExampleBatchLineWriter() error {
-    // Flush completed lines to os.Stdout at least every 512 bytes.
-    lf, err := gonl.NewBatchLineWriter(os.Stdout, 512)
-    if err != nil {
-        return err
-    }
+func ExampleBatchLineWriter() {
+	// For bulk streaming cases, recommend one use the same size that
+	// io.Copy uses by default. For more interactive cases, use a
+	// smaller threshold.
+	const threshold = 32 * 1024
 
-    // Give copy buffer some room.
-    _, rerr := io.CopyBuffer(lf, os.Stdin, make([]byte, 4096))
+	source := bytes.NewReader(novel)
 
-    // Clean up
-    cerr := lf.Close()
-    if rerr == nil {
-        return cerr
-    }
-    return rerr
+	// bytes.Buffer does not provide a Close method, therefore need to
+	// wrap it with a structure that provides a no-op Close method.
+	bb := new(bytes.Buffer)
+	destination := NopCloseWriter(bb)
+
+	lw, err := gonl.NewBatchLineWriter(destination, threshold)
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = lw.ReadFrom(source)
+	if err != nil {
+		panic(err)
+	}
+
+	if err = lw.Close(); err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("%d\n", bb.Len())
+	// Output: 4039275
 }
 ```
 

@@ -1,6 +1,9 @@
 package gonl
 
 import (
+	"bytes"
+	_ "embed"
+	"fmt"
 	"io"
 	"testing"
 )
@@ -35,6 +38,42 @@ func (lw *BatchLineWriter) bufferWrite(p []byte) (n int, err error) {
 		m = lw.bufferGrow(len(p))
 	}
 	return copy(lw.buf[m:], p), nil
+}
+
+////////////////////////////////////////
+
+//go:embed 2600-h.htm
+var novel []byte
+
+func ExampleBatchLineWriter() {
+	// For bulk streaming cases, recommend one use the same size that
+	// io.Copy uses by default. For more interactive cases, use a
+	// smaller threshold.
+	const threshold = 32 * 1024
+
+	source := bytes.NewReader(novel)
+
+	// bytes.Buffer does not provide a Close method, therefore need to
+	// wrap it with a structure that provides a no-op Close method.
+	bb := new(bytes.Buffer)
+	destination := NopCloseWriter(bb)
+
+	lw, err := NewBatchLineWriter(destination, threshold)
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = lw.ReadFrom(source)
+	if err != nil {
+		panic(err)
+	}
+
+	if err = lw.Close(); err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("%d\n", bb.Len())
+	// Output: 4039275
 }
 
 func TestBatchLineWriter(t *testing.T) {
