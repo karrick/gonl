@@ -17,7 +17,7 @@ func newTestReader(tuples []tuple) *LineTerminatedReader {
 	return &LineTerminatedReader{R: &testReader{tuples: tuples}}
 }
 
-func ExampleNewLineTerminatedReader() {
+func ExampleLineTerminatedReader() {
 	r := &LineTerminatedReader{R: strings.NewReader("123\n456")}
 	buf, err := ioutil.ReadAll(r)
 	if err != nil {

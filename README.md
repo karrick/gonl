@@ -53,7 +53,7 @@ LineTerminatedReader reads from the source io.Reader and ensures the
 final byte read from it is a newline.
 
 ```Go
-func ExampleNewLineTerminatedReader() {
+func ExampleLineTerminatedReader() {
 	r := &gonl.LineTerminatedReader{R: strings.NewReader("123\n456")}
 	buf, err := ioutil.ReadAll(r)
 	if err != nil {
