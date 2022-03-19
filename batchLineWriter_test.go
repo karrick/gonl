@@ -105,6 +105,34 @@ func TestBatchLineWriter(t *testing.T) {
 		})
 	})
 
+	t.Run("ReadFrom", func(t *testing.T) {
+		r := &testReader{tuples: []tuple{
+			tuple{"line 1\n", nil},
+			tuple{"line 2\n", nil},
+			tuple{"line 3\n", nil},
+			tuple{"line 4\n", nil},
+			tuple{"line 5", io.EOF},
+		}}
+
+		output := new(testBuffer)
+
+		lw, err := NewBatchLineWriter(output, 5)
+		ensureErrorNil(t, err)
+
+		nr, err := lw.ReadFrom(r)
+		ensureErrorNil(t, err)
+
+		if got, want := nr, int64(34); got != want {
+			t.Errorf("GOT: %v; WANT: %v", got, want)
+		}
+		ensureStringer(t, output, "line 1\nline 2\nline 3\nline 4\n")
+
+		// flush final non terminated line
+		err = lw.Close()
+		ensureErrorNil(t, err)
+		ensureStringer(t, output, "line 1\nline 2\nline 3\nline 4\nline 5")
+	})
+
 	t.Run("Write", func(t *testing.T) {
 		t.Run("buf empty | data no newline | no flush", func(t *testing.T) {
 			output := new(testBuffer)
