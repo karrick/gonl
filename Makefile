@@ -1,13 +1,18 @@
-.PHONY: bench clean test
+.PHONY: bench clean distclean test
 
-bench: 2600-h.htm
+bench: 2600-0.txt
+	mkdir -p logs
 	go test -bench=.
 
 clean:
-	rm -f 2600-h.htm
+	rm -rf logs 2600-0.txt
 
-test: 2600-h.htm
+distclean: clean
+	rm -f 2600-0.txt
+
+test: 2600-0.txt
+	mkdir -p logs
 	go test
 
-2600-h.htm:
-	curl -LOC - https://www.gutenberg.org/files/2600/2600-h/2600-h.htm
+2600-0.txt:
+	curl -LOC - https://gutenberg.org/files/2600/2600-0.txt

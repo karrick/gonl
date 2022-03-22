@@ -42,7 +42,7 @@ func (lw *BatchLineWriter) bufferWrite(p []byte) (n int, err error) {
 
 ////////////////////////////////////////
 
-//go:embed 2600-h.htm
+//go:embed 2600-0.txt
 var novel []byte
 
 func ExampleBatchLineWriter() {
@@ -72,8 +72,8 @@ func ExampleBatchLineWriter() {
 		panic(err)
 	}
 
-	fmt.Printf("%d\n", bb.Len())
-	// Output: 4039275
+	fmt.Println(bb.Len() == len(novel))
+	// Output: true
 }
 
 func TestBatchLineWriter(t *testing.T) {
