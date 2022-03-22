@@ -84,16 +84,16 @@ func TestBatchLineWriter(t *testing.T) {
 	// write error vs no write error
 
 	t.Run("NewBatchLineWriter", func(t *testing.T) {
-		_, err := NewBatchLineWriter(new(dumpWriteCloser), 0)
+		_, err := NewBatchLineWriter(new(discardWriteCloser), 0)
 		ensureError(t, err, "flushThreshold")
 
-		_, err = NewBatchLineWriter(new(dumpWriteCloser), -1)
+		_, err = NewBatchLineWriter(new(discardWriteCloser), -1)
 		ensureError(t, err, "flushThreshold")
 	})
 
 	t.Run("Close", func(t *testing.T) {
 		t.Run("no error", func(t *testing.T) {
-			wc, err := NewBatchLineWriter(new(dumpWriteCloser), 16)
+			wc, err := NewBatchLineWriter(new(discardWriteCloser), 16)
 			ensureErrorNil(t, err)
 			ensureWrite(t, wc, "line 1\n")
 			ensureError(t, wc.Close())
@@ -111,7 +111,7 @@ func TestBatchLineWriter(t *testing.T) {
 			ensureError(t, wc.Close(), "test close error")
 		})
 		t.Run("write error during close", func(t *testing.T) {
-			wc, err := NewBatchLineWriter(new(dumpWriteCloser), 16)
+			wc, err := NewBatchLineWriter(new(discardWriteCloser), 16)
 			ensureErrorNil(t, err)
 			ensureError(t, wc.Close())
 		})
@@ -119,7 +119,7 @@ func TestBatchLineWriter(t *testing.T) {
 
 	t.Run("flushCompleted", func(t *testing.T) {
 		t.Run("buf has no newlines", func(t *testing.T) {
-			wc, err := NewBatchLineWriter(new(dumpWriteCloser), 16)
+			wc, err := NewBatchLineWriter(new(discardWriteCloser), 16)
 			ensureErrorNil(t, err)
 			ensureWrite(t, wc, "line 1")
 			n, err := wc.flushCompleted(0, 0, 0)

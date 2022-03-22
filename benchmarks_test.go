@@ -54,7 +54,7 @@ func BenchmarkCheapWrites(b *testing.B) {
 
 		b.Run("ReadFrom", func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				drain := new(dumpWriteCloser)
+				drain := new(discardWriteCloser)
 
 				output, err := NewBatchLineWriter(drain, threshold)
 				if err != nil {
@@ -69,11 +69,15 @@ func BenchmarkCheapWrites(b *testing.B) {
 				if err = output.Close(); err != nil {
 					b.Fatal(err)
 				}
+
+				if got, want := drain.count, len(novel); got != want {
+					b.Errorf("GOT: %v; WANT: %v", got, want)
+				}
 			}
 		})
 		b.Run("Write", func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				drain := new(dumpWriteCloser)
+				drain := new(discardWriteCloser)
 
 				output, err := NewBatchLineWriter(drain, threshold)
 				if err != nil {
@@ -88,6 +92,10 @@ func BenchmarkCheapWrites(b *testing.B) {
 				if err = output.Close(); err != nil {
 					b.Fatal(err)
 				}
+
+				if got, want := drain.count, len(novel); got != want {
+					b.Errorf("GOT: %v; WANT: %v", got, want)
+				}
 			}
 		})
 	})
@@ -95,7 +103,7 @@ func BenchmarkCheapWrites(b *testing.B) {
 	b.Run("PerLineWriter", func(b *testing.B) {
 		b.Run("Write", func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				drain := new(dumpWriteCloser)
+				drain := new(discardWriteCloser)
 				output := &PerLineWriter{WC: drain}
 
 				_, err := copyBuffer(output, bytes.NewReader(novel), nil)
@@ -106,12 +114,20 @@ func BenchmarkCheapWrites(b *testing.B) {
 				if err = output.Close(); err != nil {
 					b.Fatal(err)
 				}
+
+				if got, want := drain.count, len(novel); got != want {
+					b.Errorf("GOT: %v; WANT: %v", got, want)
+				}
 			}
 		})
 	})
 }
 
 func BenchmarkWorkingWrites(b *testing.B) {
+	// ??? not really worried about true message authentication
+	// codes. Just want to shove data into an io.Writer that does a
+	// bit of work, while also verifying every byte passed through the
+	// intermediate structures.
 	var key = []byte("this is a dummy key")
 	var mac = []byte("\xfav\x96\xd1C\xea\xb4\xdd߿\xd0G\x0e\x95\xa8)\xb5\xed\xe6\x11{e\xf2f\xd2\xea\xf5\xdb=\xb46\xff")
 
@@ -119,7 +135,7 @@ func BenchmarkWorkingWrites(b *testing.B) {
 		const threshold = 32 * 1024 // use same size as copy
 
 		b.Run("ReadFrom", func(b *testing.B) {
-			drain := newWorkWriteCloser(key)
+			drain := newHashWriteCloser(key)
 			b.ResetTimer()
 
 			for i := 0; i < b.N; i++ {
@@ -145,7 +161,7 @@ func BenchmarkWorkingWrites(b *testing.B) {
 			}
 		})
 		b.Run("Write", func(b *testing.B) {
-			drain := newWorkWriteCloser(key)
+			drain := newHashWriteCloser(key)
 			b.ResetTimer()
 
 			for i := 0; i < b.N; i++ {
@@ -174,7 +190,7 @@ func BenchmarkWorkingWrites(b *testing.B) {
 
 	b.Run("PerLineWriter", func(b *testing.B) {
 		b.Run("Write", func(b *testing.B) {
-			drain := newWorkWriteCloser(key)
+			drain := newHashWriteCloser(key)
 			b.ResetTimer()
 
 			for i := 0; i < b.N; i++ {
