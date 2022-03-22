@@ -8,7 +8,7 @@ func TestPerLineWriter(t *testing.T) {
 	t.Run("buffer size 0", func(t *testing.T) {
 		bb := new(testBuffer)
 
-		lw := &PerLineWriter{WC: bb}
+		lw := PerLineWriter{WC: bb}
 
 		nw, err := lw.Write([]byte("line1"))
 		if got, want := nw, 5; got != want {
@@ -43,7 +43,7 @@ func TestPerLineWriter(t *testing.T) {
 		bb := new(testBuffer)
 		const bufsize = 3 // only represents initial size; does not limit
 
-		lw := &PerLineWriter{WC: bb}
+		lw := PerLineWriter{WC: bb}
 
 		nw, err := lw.Write([]byte("line1"))
 		if got, want := nw, 5; got != want {

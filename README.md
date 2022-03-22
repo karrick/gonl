@@ -148,13 +148,13 @@ sequence of bytes.
 ```Go
 func ExamplePerLineWriter() error {
     // Flush completed lines to os.Stdout at least every 512 bytes.
-    lf := gonl.NewPerLineWriter(os.Stdout, 512)
+    lw := gonl.PerLineWriter{WC: os.Stdout}
 
     // Give copy buffer some room.
-    _, rerr := io.CopyBuffer(lf, os.Stdin, make([]byte, 4096))
+    _, rerr := io.Copy(lw, os.Stdin)
 
     // Clean up
-    cerr := lf.Close()
+    cerr := lw.Close()
     if rerr == nil {
         return cerr
     }
