@@ -104,7 +104,7 @@ func BenchmarkPerLineWriter(b *testing.B) {
 	b.Run("Write", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			drain := new(dumpWriteCloser)
-			output := NewPerLineWriter(drain, threshold)
+			output := &PerLineWriter{WC: drain}
 
 			_, err := copyBuffer(output, bytes.NewReader(novel), nil)
 			if err != nil {

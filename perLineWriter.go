@@ -2,6 +2,7 @@ package gonl
 
 import (
 	"bytes"
+	"errors"
 	"io"
 )
 
@@ -19,26 +20,88 @@ import (
 // invokes Write on the underlying io.WriteCloser with a newline
 // terminated sequence of bytes.
 type PerLineWriter struct {
-	unfinished []byte         // bytes without trailing newline
-	wc         io.WriteCloser // where data ultimately written
+	buf []byte
+
+	// WC is io.WriteCloser where data is ultimately written.
+	WC io.WriteCloser
+
+	off int // read at buf[off:]; write at buf[:len(buf)]
 }
 
 // NewPerLineWriter returns a new PerLineWriter that individually
 // writes each newline terminated line to the provided
 // io.WriteCloser. When a PerLineWriter is closed, it flushes any
-// remaining bytes, then closes the provided io.WriteCloser. BUFSIZE
-// may be zero, but this function requires an unsigned integer in
-// order to prevent need to check for negative argument value, and
-// potentially having to return an error, and clients having to check
-// an error return value.
-func NewPerLineWriter(wc io.WriteCloser, bufsize uint) *PerLineWriter {
-	lw := &PerLineWriter{wc: wc}
+// remaining bytes, then closes the provided io.WriteCloser.
+func NewPerLineWriter(wc io.WriteCloser) *PerLineWriter {
+	return &PerLineWriter{WC: wc}
+}
 
-	if bufsize > 0 {
-		lw.unfinished = make([]byte, 0, int(bufsize))
+// bufferGrow will ensure the backing buffer has enough room to hold
+// at least n more bytes, reslicing the data in the buffer if
+// possible, and expanding the backing array if necessary. It returns
+// the index into the buffer where bytes may be added.
+func (lw *PerLineWriter) bufferGrow(n int) int {
+	m := lw.bufferLength()
+	if m == 0 && lw.off != 0 {
+		// Reset buffer to reduce likelihood of unnecessary
+		// allocation.
+		lw.bufferReset()
 	}
+	if i, ok := lw.bufferGrowInline(n); ok {
+		// NOTE: This is the only way to exit this method with lw.off
+		// potentially not being set to 0.
+		return i
+	}
+	// NOTE: If we get here, there is no way of leaving this method
+	// without lw.off set to 0, and any used portion of buffer moved
+	// to the left.
+	if lw.buf == nil && n <= smallBufferSize {
+		lw.buf = make([]byte, n, smallBufferSize)
+		return 0
+	}
+	mpn := m + n
+	c := cap(lw.buf)
+	if mpn <= c/2 {
+		// If amount of room needed is less than half slice capacity,
+		// slide the data over to avoid too frequent allocation and
+		// byte copying.
+		copy(lw.buf, lw.buf[lw.off:])
+	} else if c > maxInt-c-n {
+		panic(errors.New("gonl.PerLineWriter: too large"))
+	} else {
+		// Allocate new backing array, then copy bytes.
+		buf := make([]byte, 2*c+n)
+		copy(buf, lw.buf[lw.off:])
+		lw.buf = buf
+	}
+	lw.off = 0
+	lw.buf = lw.buf[:mpn]
+	return m
+}
 
-	return lw
+// bufferGrowInline is an inlineable version of grow for the fast case
+// where the internal buffer only needs to be resliced. It returns the
+// index where bytes should be written and whether it succeeded.
+func (lw *PerLineWriter) bufferGrowInline(n int) (int, bool) {
+	l := len(lw.buf)
+	lpn := l + n
+	if lpn <= cap(lw.buf) {
+		lw.buf = lw.buf[:lpn]
+		return l, true
+	}
+	return 0, false
+}
+
+// bufferLength returns the number of bytes the buffer holds, ignoring
+// the data already processed. Similar to len(lw.buf) for a
+// non-sliding buffer.
+func (lw *PerLineWriter) bufferLength() int { return len(lw.buf) - lw.off }
+
+// bufferReset resets the buffer so it does not have any usable bytes,
+// but keeps the allocated backing array.
+func (lw *PerLineWriter) bufferReset() {
+	lw.buf = lw.buf[:0]
+	lw.off = 0
 }
 
 // Close will transform then write any data remaining in the
@@ -47,65 +110,59 @@ func NewPerLineWriter(wc io.WriteCloser, bufsize uint) *PerLineWriter {
 func (lw *PerLineWriter) Close() error {
 	var err error
 
-	if len(lw.unfinished) > 0 {
+	if lw.bufferLength() > 0 {
 		// When additional bytes are available to be written, flush
 		// them without a newline before we close the stream.
-		if _, err = lw.wc.Write(lw.unfinished); err != nil {
-			_ = lw.wc.Close()
+		if _, err = lw.WC.Write(lw.buf[lw.off:]); err != nil {
+			_ = lw.WC.Close()
+			lw.WC = nil
+			lw.buf = nil
+			lw.off = 0
 			return err
 		}
-		lw.unfinished = lw.unfinished[:0]
 	}
 
-	return lw.wc.Close()
+	err = lw.WC.Close()
+	lw.WC = nil
+	lw.buf = nil
+	lw.off = 0
+	return err
 }
 
 // Write invokes Write on the underlying io.WriteCloser for each
-// newline terminated sequence of bytes in p.
+// newline terminated sequence of bytes in p. Each call to this method
+// may result in 0, 1, or many Write calls to the underlying
+// io.WriteCloser, depending on how many newline characters are in p.
 func (lw *PerLineWriter) Write(p []byte) (int, error) {
-	var fullLine []byte // fullLine is a newline terminated line
 	var err error
 	var index int
-	var nc int // nc is the count of bytes consumed from buf
+
+	m, ok := lw.bufferGrowInline(len(p))
+	if !ok {
+		m = lw.bufferGrow(len(p))
+	}
+	copy(lw.buf[m:], p)
+	// POST: lw.buf[m:] is new data, however lw.buf[lw.off:m] also
+	// needs processing.
+
+	// We know remaining bytes lw.buf[lw.off:m] does not have a
+	// newline, so start searching at offset m.
+	index = bytes.IndexByte(lw.buf[m:], '\n')
+	if index == -1 {
+		return len(p), nil
+	}
+	// POST: lw.buf[m+index] is a newline.
+	index += m + 1 // extra byte to include newline
 
 	for {
-		index = bytes.IndexByte(p, '\n')
+		if _, err = lw.WC.Write(lw.buf[lw.off:index]); err != nil {
+			return len(p), err // ???
+		}
+		lw.off = index // advance buf to consume bytes processed
+		index = bytes.IndexByte(lw.buf[lw.off:], '\n')
 		if index == -1 {
-			// When buf does not contain a newline, we will store
-			// whatever bytes left in provided buf in the LineWriter
-			// instance, and use it to prefix what we are given next
-			// time Write is invoked.
-			lw.unfinished = append(lw.unfinished, p...)
-			nc += len(p) // pretend like we processed the extra bytes
-			return nc, nil
+			return len(p), nil
 		}
-		// POST: buf[index] is a newline.
-		index++
-
-		// When a previous Write invocation left bytes without a
-		// newline, use it to prefix whatever bytes provided during
-		// this invocation.
-		if len(lw.unfinished) > 0 {
-			// Append new line to whatever was already accumulated
-			// from previous invocation.
-			fullLine = append(lw.unfinished, p[:index]...)
-
-			// Mark accumulated as consumed, while reusing previously
-			// allocated memory pointed to by byte slice.
-			lw.unfinished = lw.unfinished[:0]
-		} else {
-			fullLine = p[:index]
-		}
-
-		if _, err = lw.wc.Write(fullLine); err != nil {
-			return nc, err
-		}
-
-		nc += index   // update number of bytes processed
-		p = p[index:] // advance buf to consume bytes processed
-
-		if len(p) == 0 {
-			return nc, nil // we are at end
-		}
+		index += lw.off + 1 // extra byte to include newline
 	}
 }
