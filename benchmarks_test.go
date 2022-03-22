@@ -48,76 +48,153 @@ func copyBuffer(dst io.Writer, src io.Reader, buf []byte) (int64, error) {
 	return written, err
 }
 
-func BenchmarkBatchLineWriter(b *testing.B) {
-	const threshold = 32 * 1024 // use same size as copy
+func BenchmarkCheapWrites(b *testing.B) {
+	b.Run("BatchLineLineWriter", func(b *testing.B) {
+		const threshold = 32 * 1024 // use same size as copy
 
-	b.Run("ReadFrom", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			drain := new(dumpWriteCloser)
-			output, err := NewBatchLineWriter(drain, threshold)
-			if err != nil {
-				b.Fatal(err)
-			}
+		b.Run("ReadFrom", func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				drain := new(dumpWriteCloser)
 
-			_, err = output.ReadFrom(bytes.NewReader(novel))
-			if err != nil {
-				b.Fatal(err)
-			}
+				output, err := NewBatchLineWriter(drain, threshold)
+				if err != nil {
+					b.Fatal(err)
+				}
 
-			if err = output.Close(); err != nil {
-				b.Fatal(err)
-			}
+				_, err = output.ReadFrom(bytes.NewReader(novel))
+				if err != nil {
+					b.Fatal(err)
+				}
 
-			if got, want := drain.count, len(novel); got != want {
-				b.Errorf("GOT: %v; WANT: %v", got, want)
+				if err = output.Close(); err != nil {
+					b.Fatal(err)
+				}
 			}
-		}
+		})
+		b.Run("Write", func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				drain := new(dumpWriteCloser)
+
+				output, err := NewBatchLineWriter(drain, threshold)
+				if err != nil {
+					b.Fatal(err)
+				}
+
+				_, err = copyBuffer(output, bytes.NewReader(novel), nil)
+				if err != nil {
+					b.Fatal(err)
+				}
+
+				if err = output.Close(); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
 	})
 
-	b.Run("Write", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			drain := new(dumpWriteCloser)
-			output, err := NewBatchLineWriter(drain, threshold)
-			if err != nil {
-				b.Fatal(err)
-			}
+	b.Run("PerLineWriter", func(b *testing.B) {
+		b.Run("Write", func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				drain := new(dumpWriteCloser)
+				output := &PerLineWriter{WC: drain}
 
-			_, err = copyBuffer(output, bytes.NewReader(novel), nil)
-			if err != nil {
-				b.Fatal(err)
-			}
+				_, err := copyBuffer(output, bytes.NewReader(novel), nil)
+				if err != nil {
+					b.Fatal(err)
+				}
 
-			if err = output.Close(); err != nil {
-				b.Fatal(err)
+				if err = output.Close(); err != nil {
+					b.Fatal(err)
+				}
 			}
-
-			if got, want := drain.count, len(novel); got != want {
-				b.Errorf("GOT: %v; WANT: %v", got, want)
-			}
-		}
+		})
 	})
 }
 
-func BenchmarkPerLineWriter(b *testing.B) {
-	const threshold = 32 * 1024 // use same size as copy
+func BenchmarkWorkingWrites(b *testing.B) {
+	var key = []byte("this is a dummy key")
+	var mac = []byte("\xfav\x96\xd1C\xea\xb4\xdd߿\xd0G\x0e\x95\xa8)\xb5\xed\xe6\x11{e\xf2f\xd2\xea\xf5\xdb=\xb46\xff")
 
-	b.Run("Write", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			drain := new(dumpWriteCloser)
-			output := &PerLineWriter{WC: drain}
+	b.Run("BatchLineLineWriter", func(b *testing.B) {
+		const threshold = 32 * 1024 // use same size as copy
 
-			_, err := copyBuffer(output, bytes.NewReader(novel), nil)
-			if err != nil {
-				b.Fatal(err)
+		b.Run("ReadFrom", func(b *testing.B) {
+			drain := newWorkWriteCloser(key)
+			b.ResetTimer()
+
+			for i := 0; i < b.N; i++ {
+				output, err := NewBatchLineWriter(drain, threshold)
+				if err != nil {
+					b.Fatal(err)
+				}
+
+				_, err = output.ReadFrom(bytes.NewReader(novel))
+				if err != nil {
+					b.Fatal(err)
+				}
+
+				if err = output.Close(); err != nil {
+					b.Fatal(err)
+				}
+
+				if !drain.ValidMAC(mac) {
+					b.Errorf("Invalid MAC: %q", drain.MAC())
+				}
+
+				drain.Reset()
 			}
+		})
+		b.Run("Write", func(b *testing.B) {
+			drain := newWorkWriteCloser(key)
+			b.ResetTimer()
 
-			if err = output.Close(); err != nil {
-				b.Fatal(err)
-			}
+			for i := 0; i < b.N; i++ {
+				output, err := NewBatchLineWriter(drain, threshold)
+				if err != nil {
+					b.Fatal(err)
+				}
 
-			if got, want := drain.count, len(novel); got != want {
-				b.Errorf("GOT: %v; WANT: %v", got, want)
+				_, err = copyBuffer(output, bytes.NewReader(novel), nil)
+				if err != nil {
+					b.Fatal(err)
+				}
+
+				if err = output.Close(); err != nil {
+					b.Fatal(err)
+				}
+
+				if !drain.ValidMAC(mac) {
+					b.Errorf("Invalid MAC: %q", drain.MAC())
+				}
+
+				drain.Reset()
 			}
-		}
+		})
+	})
+
+	b.Run("PerLineWriter", func(b *testing.B) {
+		b.Run("Write", func(b *testing.B) {
+			drain := newWorkWriteCloser(key)
+			b.ResetTimer()
+
+			for i := 0; i < b.N; i++ {
+				output := &PerLineWriter{WC: drain}
+
+				_, err := copyBuffer(output, bytes.NewReader(novel), nil)
+				if err != nil {
+					b.Fatal(err)
+				}
+
+				if err = output.Close(); err != nil {
+					b.Fatal(err)
+				}
+
+				if !drain.ValidMAC(mac) {
+					b.Errorf("Invalid MAC: %q", drain.MAC())
+				}
+
+				drain.Reset()
+			}
+		})
 	})
 }

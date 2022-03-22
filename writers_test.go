@@ -3,22 +3,9 @@ package gonl
 // These structures copied from https://github.com/karrick/gorill
 // project.
 
-import "io"
-
-// dumpWriteCloser simply tracks how many bytes have been written to
-// it.
-type dumpWriteCloser struct {
-	count int
-}
-
-func (dw *dumpWriteCloser) Close() error {
-	return nil
-}
-
-func (dw *dumpWriteCloser) Write(p []byte) (int, error) {
-	dw.count += len(p)
-	return len(p), nil
-}
+import (
+	"io"
+)
 
 // NopCloseWriter returns a structure that implements io.WriteCloser,
 // but provides a no-op Close method.  It is useful when you have an
