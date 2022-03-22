@@ -1,7 +1,6 @@
 .PHONY: bench clean distclean test
 
 bench: 2600-0.txt
-	mkdir -p logs
 	go test -bench=.
 
 clean:
@@ -11,7 +10,6 @@ distclean: clean
 	rm -f 2600-0.txt
 
 test: 2600-0.txt
-	mkdir -p logs
 	go test
 
 2600-0.txt:
