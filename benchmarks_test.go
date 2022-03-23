@@ -2,6 +2,7 @@ package gonl
 
 import (
 	"bytes"
+	_ "embed"
 	"errors"
 	"io"
 	"testing"
@@ -11,6 +12,9 @@ import (
 // and its size is chosen based on what io.Copy will create when given
 // an empty slice.
 const bufSize = 32 * 1024
+
+//go:embed 2600-0.txt
+var novel []byte
 
 // copyBuffer is a modified version of similarly named function in
 // standard library, provided here to be able to test using

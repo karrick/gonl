@@ -2,7 +2,6 @@ package gonl
 
 import (
 	"bytes"
-	_ "embed"
 	"fmt"
 	"io"
 	"testing"
@@ -41,9 +40,6 @@ func (lw *BatchLineWriter) bufferWrite(p []byte) (n int, err error) {
 }
 
 ////////////////////////////////////////
-
-//go:embed 2600-0.txt
-var novel []byte
 
 func ExampleBatchLineWriter() {
 	// For bulk streaming cases, recommend one use the same size that
