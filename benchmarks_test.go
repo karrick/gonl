@@ -59,11 +59,16 @@ func copyBuffer(dst io.Writer, src io.Reader, buf []byte) (int64, error) {
 	return written, err
 }
 
-func BenchmarkCheapWrites(b *testing.B) {
+func BenchmarkDiscardWrites(b *testing.B) {
 	b.Run("BatchLineLineWriter", func(b *testing.B) {
-		// These functions contrasts the benefit of BatchLineWriter
-		// having ReadFrom method available rather than only having
-		// Write method.
+		// These benchmark functions contrast the benefit of
+		// BatchLineWriter having ReadFrom method available rather
+		// than only having Write method.
+		//
+		// For Writes where each call has very little payload or call
+		// frequency penalty, the BatchLineWriter can be over twice as
+		// fast when ReadFrom is used rather than copying through an
+		// additional staging buffer using Write calls alone.
 
 		b.Run("ReadFrom", func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
@@ -116,6 +121,33 @@ func BenchmarkCheapWrites(b *testing.B) {
 	})
 
 	b.Run("PerLineWriter", func(b *testing.B) {
+		// PerLineWriter is significantly less performant as
+		// BatchLineWriter, and it should not be a surprise, as
+		// PerLineWriter is optimized for use cases that require a
+		// single Write call for each newline terminated line of text,
+		// and BatchLineWriter is optimized for streaming newline
+		// terminated text, often batching up many tens or even
+		// hundreds of lines to be written at once to the underlying
+		// io.WriteCloser.
+		b.Run("ReadFrom", func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				drain := new(discardWriteCloser)
+				output := &PerLineWriter{WC: drain}
+
+				_, err := output.ReadFrom(bytes.NewReader(novel))
+				if err != nil {
+					b.Fatal(err)
+				}
+
+				if err = output.Close(); err != nil {
+					b.Fatal(err)
+				}
+
+				if got, want := drain.count, len(novel); got != want {
+					b.Errorf("GOT: %v; WANT: %v", got, want)
+				}
+			}
+		})
 		b.Run("Write", func(b *testing.B) {
 			buf := make([]byte, bufSize)
 
@@ -140,7 +172,7 @@ func BenchmarkCheapWrites(b *testing.B) {
 	})
 }
 
-func BenchmarkWorkingWrites(b *testing.B) {
+func BenchmarkHashWrites(b *testing.B) {
 	// ??? not really worried about true message authentication
 	// codes. Just want to shove data into an io.Writer that does a
 	// bit of work, while also verifying every byte passed through the
@@ -149,6 +181,17 @@ func BenchmarkWorkingWrites(b *testing.B) {
 	var mac = []byte("\xfav\x96\xd1C\xea\xb4\xdd߿\xd0G\x0e\x95\xa8)\xb5\xed\xe6\x11{e\xf2f\xd2\xea\xf5\xdb=\xb46\xff")
 
 	b.Run("BatchLineLineWriter", func(b *testing.B) {
+		// These benchmark functions contrast the benefit of
+		// BatchLineWriter having ReadFrom method available rather
+		// than only having Write method.
+		//
+		// For Writes where each call exacts a toll on the process,
+		// either proportional to the payload size or the call
+		// frequency, the BatchLineWriter is still faster when
+		// ReadFrom is used rather than copying through an additional
+		// staging buffer using Write calls alone, but the effect is
+		// not as dramatic as for scenarios where Writes are less
+		// expensive.
 		b.Run("ReadFrom", func(b *testing.B) {
 			drain := newHashWriteCloser(key)
 			b.ResetTimer()
@@ -205,6 +248,35 @@ func BenchmarkWorkingWrites(b *testing.B) {
 	})
 
 	b.Run("PerLineWriter", func(b *testing.B) {
+		// Unsurprisingly, PerLineWriter is significantly less
+		// performant in streaming scenarios than BatchLineWriter, but
+		// it remains a viable alternative when the use case requires
+		// a one-to-one correspondence between newlines and Write
+		// calls. That is, each and every line is written individually
+		// to the underlying io.WriteCloser.
+		b.Run("ReadFrom", func(b *testing.B) {
+			drain := newHashWriteCloser(key)
+			b.ResetTimer()
+
+			for i := 0; i < b.N; i++ {
+				output := &PerLineWriter{WC: drain}
+
+				_, err := output.ReadFrom(bytes.NewReader(novel))
+				if err != nil {
+					b.Fatal(err)
+				}
+
+				if err = output.Close(); err != nil {
+					b.Fatal(err)
+				}
+
+				if !drain.ValidMAC(mac) {
+					b.Errorf("Invalid MAC: %q", drain.MAC())
+				}
+
+				drain.Reset()
+			}
+		})
 		b.Run("Write", func(b *testing.B) {
 			buf := make([]byte, bufSize)
 			drain := newHashWriteCloser(key)

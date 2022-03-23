@@ -129,6 +129,66 @@ func (lw *PerLineWriter) Close() error {
 	return err
 }
 
+// ReadFrom reads data from r until io.EOF or error, periodically
+// flushing one completed newline to the underlying io.WriteCloser.
+// The return value is the number of bytes read from r. Any error
+// except io.EOF encountered during the read or during a flushing
+// Write is also returned.
+//
+// This method is provided to satisfy the io.ReaderFrom interface,
+// which the io.Copy function uses if available, eliminating the need
+// to copy bytes from the io.Reader, through two buffers, and finally
+// to the io.Writer.
+func (lw *PerLineWriter) ReadFrom(r io.Reader) (int64, error) {
+	var totalRead int64
+
+	for {
+		m := lw.bufferGrow(minRead)
+		lw.buf = lw.buf[:m]
+
+		nr, rerr := r.Read(lw.buf[m:cap(lw.buf)])
+		if nr < 0 {
+			return totalRead, errors.New("invalid read result")
+		}
+
+		lw.buf = lw.buf[:m+nr]
+		totalRead += int64(nr)
+
+		// NEWLINE LOGIC
+		//
+		index := bytes.IndexByte(lw.buf[m:], '\n')
+		if index >= 0 {
+			// POST: lw.buf[m+index] is a newline.
+			index += m + 1 // extra byte to include newline
+			for {
+				if _, err := lw.WC.Write(lw.buf[lw.off:index]); err != nil {
+					return totalRead, err // ???
+				}
+				lw.off = index // advance buf to consume bytes processed
+
+				index = bytes.IndexByte(lw.buf[lw.off:], '\n')
+				if index == -1 {
+					break
+				}
+				index += lw.off + 1 // extra byte to include newline
+			}
+		}
+		//
+		// END OF NEWLINE LOGIC
+
+		if rerr == io.EOF {
+			// NOTE: This does not flush remaining data, because there
+			// may be additional bytes to send to line writer.
+			return totalRead, nil
+		}
+		if rerr != nil {
+			// NOTE: This does not flush remaining data, because there
+			// may be additional bytes to send to line writer.
+			return totalRead, rerr
+		}
+	}
+}
+
 // Write invokes Write on the underlying io.WriteCloser for each
 // newline terminated sequence of bytes in p. Each call to this method
 // may result in 0, 1, or many Write calls to the underlying
